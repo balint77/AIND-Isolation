@@ -118,6 +118,17 @@ class IsolationPlayer:
         self.time_left = None
         self.TIMER_THRESHOLD = timeout
 
+min_log_level = 1000
+
+def log(log_level, pause, game, *args):
+    if log_level < min_log_level:
+        return
+    if game is not None:
+        print(game.to_string())
+    print(*args)
+    if pause:
+        input("Press Enter to continue...")
+
 
 class MinimaxPlayer(IsolationPlayer):
     """Game-playing agent that chooses a move using depth-limited minimax
@@ -212,9 +223,119 @@ class MinimaxPlayer(IsolationPlayer):
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        best_move = (-1, -1)
+        best_score = float("-inf")
+        tree_root = Node(best_move)
+        legal_moves = game.get_legal_moves()
+        for move in legal_moves:
+            log(10, False, game, "X trying", move)
+            try:
+                node = Node(move, tree_root)
+                score = self.minimax_traverse(game.forecast_move(move), depth - 1, node)
+                node.score = score
+                log(10, False, game, move,"X total score",score)
+            except SearchTimeout:
+                log(500, False, game, "X timed out")
+                break
+            if score > best_score:
+                best_score = score
+                best_move = move
+                tree_root.score = best_score
+                log(10, False, game, "X new max", best_move, best_score)
+        #tree_root.print_tree()
+        log(100, False, game, "X chosen", best_move, best_score)
+        if best_move not in legal_moves:
+            log(100, False, None, "X wtf", best_move, best_score, legal_moves)
+        return best_move
 
+    def minimax_traverse(self, game, depth, parent_node):
+        log(5, False, game, "evaluate", depth, game.active_player)
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        if game.is_loser(self):
+            log(10, False, game, "we would lose")
+            return float("-inf")
+
+        if game.is_winner(self):
+            log(10, False, game, "we would win")
+            return float("inf")
+
+        if depth == 0:
+            log(5, False, None, "depth limit reached",self.score(game, self))
+            return self.score(game, self)
+
+        max_level = True if self is game.active_player else False
+        best_move = (-1, -1)
+        best_score = float("-inf") if max_level else float("inf")
+        legal_moves = game.get_legal_moves()
+        for move in legal_moves:
+            try:
+                log(5, False, None, "traversing", move)
+                node = Node(move, parent_node)
+                score = self.minimax_traverse(game.forecast_move(move), depth - 1, node)
+                node.score = score
+                log(5, False, None, move, "scores", score)
+            except SearchTimeout:
+                log(500, False, game, "timed out")
+                return best_score
+            if max_level and score > best_score:
+                best_score = score
+                best_move = move
+                log(5, False, None, "new max",best_move, best_score)
+            if not max_level and score < best_score:
+                best_score = score
+                best_move = move
+                log(5, False, None, "new min", best_move, best_score)
+        return best_score
+
+class Node:
+    def __init__(self, move, parent=None, score=None):
+        self.move = move
+        self.score = score
+        self.parent = parent
+        self.children = []
+
+        if parent:
+            self.parent.children.append(self)
+
+    def __str__(self):
+        return "{}:{}".format(self.move ,self.score)
+
+    def print_tree(self, indent="", last='updown'):
+
+        nb_children = lambda node: sum(nb_children(child) for child in node.children) + 1
+        size_branch = {child: nb_children(child) for child in self.children}
+
+        """ Creation of balanced lists for "up" branch and "down" branch. """
+        up = sorted(self.children, key=lambda node: nb_children(node))
+        down = []
+        while up and sum(size_branch[node] for node in down) < sum(size_branch[node] for node in up):
+            down.append(up.pop())
+
+        """ Printing of "up" branch. """
+        for child in up:
+            next_last = 'up' if up.index(child) is 0 else ''
+            next_indent = '{0}{1}{2}'.format(indent, ' ' if 'up' in last else '*', " " * len(self.__str__()))
+            child.print_tree(indent=next_indent, last=next_last)
+
+        """ Printing of current node. """
+        if last == 'up': start_shape = '*'
+        elif last == 'down': start_shape = '*'
+        elif last == 'updown': start_shape = ' '
+        else: start_shape = '*'
+
+        if up: end_shape = '*'
+        elif down: end_shape = '*'
+        else: end_shape = ''
+
+        print('{0}{1}{2}{3}'.format(indent, start_shape, self, end_shape))
+
+        """ Printing of "down" branch. """
+        for child in down:
+            next_last = 'down' if down.index(child) is len(down) - 1 else ''
+            next_indent = '{0}{1}{2}'.format(indent, ' ' if 'down' in last else '*', " " * len(self.__str__()))
+            child.print_tree(indent=next_indent, last=next_last)
 
 class AlphaBetaPlayer(IsolationPlayer):
     """Game-playing agent that chooses a move using iterative deepening minimax
