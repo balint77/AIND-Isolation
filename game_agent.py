@@ -118,7 +118,7 @@ class IsolationPlayer:
         self.time_left = None
         self.TIMER_THRESHOLD = timeout
 
-min_log_level = 1000
+min_log_level = 10000
 
 def log(log_level, pause, game, *args):
     if log_level < min_log_level:
@@ -381,11 +381,18 @@ class AlphaBetaPlayer(IsolationPlayer):
             (-1, -1) if there are no available legal moves.
         """
         self.time_left = time_left
+        best_move = (-1,-1)
         try:
-            return self.alphabeta(game, self.search_depth)
+            search_depth = 0
+            max_depth = len(game.get_blank_spaces())
+            log(1000, False, None, "max depth", max_depth)
+            while search_depth < max_depth :
+                search_depth += 1
+                best_move = self.alphabeta(game, search_depth)
+            log(1000, False, game, "bottomed", search_depth, best_move)
         except SearchTimeout:
-            log(500, False, game, "Y timed out")
-            return (-1, -1)
+            log(1000, False, game, "timed out at depth", search_depth, best_move)
+            pass
         return best_move
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
