@@ -118,7 +118,7 @@ class IsolationPlayer:
         self.time_left = None
         self.TIMER_THRESHOLD = timeout
 
-min_log_level = 400
+min_log_level = 1000
 
 def log(log_level, pause, game, *args):
     if log_level < min_log_level:
@@ -242,7 +242,7 @@ class MinimaxPlayer(IsolationPlayer):
                 best_move = move
                 tree_root.score = best_score
                 log(10, False, game, "X new max", best_move, best_score)
-        tree_root.print_tree()
+        tree_root.print_tree(100)
         log(100, False, game, "X chosen", best_move, best_score)
         if best_move not in legal_moves:
             log(100, False, None, "X wtf", best_move, best_score, legal_moves)
@@ -306,7 +306,10 @@ class Node:
             str += " CUT"
         return str + "-"
 
-    def print_tree(self, indent="", last='updown'):
+    def print_tree(self, log_level, indent="", last='updown'):
+
+        if log_level < min_log_level:
+            return
 
         nb_children = lambda node: sum(nb_children(child) for child in node.children) + 1
         size_branch = {child: nb_children(child) for child in self.children}
@@ -378,18 +381,14 @@ class AlphaBetaPlayer(IsolationPlayer):
             (-1, -1) if there are no available legal moves.
         """
         self.time_left = time_left
-
-        best_move = (-1, -1)
-        tree_root = Node(best_move)
         try:
-            best_score = self.alphabeta(game, self.search_depth, parent_node=tree_root)
-            tree_root.score = best_score
+            return self.alphabeta(game, self.search_depth)
         except SearchTimeout:
-            pass
-
+            log(500, False, game, "Y timed out")
+            return (-1, -1)
         return best_move
 
-    def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf"), parent_node=None):
+    def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
         """Implement depth-limited minimax search with alpha-beta pruning as
         described in the lectures.
 
@@ -434,6 +433,39 @@ class AlphaBetaPlayer(IsolationPlayer):
                 each helper function or else your agent will timeout during
                 testing.
         """
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+        best_move = (-1, -1)
+        best_score = float("-inf")
+        tree_root = Node(best_move)
+        legal_moves = game.get_legal_moves()
+        for move in legal_moves:
+            log(10, False, game, "X trying", move)
+            try:
+                node = Node(move, tree_root)
+                score = self.alphabeta_traverse(game.forecast_move(move), self.search_depth - 1, alpha, beta, parent_node=node)
+                node.score = score
+                log(10, False, None, move, "X total score", score)
+                if score > best_score:
+                    best_score = score
+                    best_move = move
+                    tree_root.score = best_score
+                    log(10, False, None, "X new max", best_move, best_score)
+                    if best_score >= beta:
+                        node.cut = True
+                        break
+                    alpha = max(alpha, best_score)
+            except SearchTimeout:
+                log(500, False, game, "X timed out")
+                break
+        tree_root.print_tree(100)
+        if best_move not in legal_moves:
+            log(100, False, None, "X wtf", best_move, best_score, legal_moves)
+        log(100, False, game, "X chosen", best_move, best_score)
+        return best_move
+
+    def alphabeta_traverse(self, game, depth, alpha=float("-inf"), beta=float("inf"), parent_node=None):
+        """Similar to alphabeta, but log decision moves and scores into a tree linked on parent_node"""
 
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
@@ -449,31 +481,27 @@ class AlphaBetaPlayer(IsolationPlayer):
 
         max_level = True if self is game.active_player else False
         best_move = (-1, -1)
-        best_score = alpha if max_level else beta
+        best_score = float("-inf") if max_level else float("inf")
         legal_moves = game.get_legal_moves()
         try:
             for move in legal_moves:
                 node = Node(move, parent_node)
-                if max_level:
-                    score = self.alphabeta(game.forecast_move(move), depth - 1, best_score, beta, node)
-                    node.score = score
-                    if score > best_score:
-                        best_score = score
-                        best_move = move
-                        if best_score > beta:
-                            node.cut = True
-                            best_score = beta
-                            break
-                else:
-                    score = self.alphabeta(game.forecast_move(move), depth - 1, alpha, best_score, node)
-                    node.score = score
-                    if score < best_score:
-                        best_score = score
-                        best_move = move
-                        if best_score < alpha:
-                            node.cut = True
-                            best_score = alpha
-                            break
+                score = self.alphabeta_traverse(game.forecast_move(move), depth - 1, alpha, beta, node)
+                node.score = score
+                if max_level and score > best_score:
+                    best_score = score
+                    best_move = move
+                    if best_score >= beta:
+                        node.cut = True
+                        break
+                    alpha = max(alpha, best_score)
+                if not max_level and score < best_score:
+                    best_score = score
+                    best_move = move
+                    if best_score <= alpha:
+                        node.cut = True
+                        break
+                    beta = min(beta, best_score)
         except SearchTimeout:
             log(500, False, game, "timed out")
             pass

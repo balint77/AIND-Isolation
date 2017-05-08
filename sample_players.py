@@ -257,9 +257,9 @@ if __name__ == "__main__":
     from isolation import Board
 
     # create an isolation board (by default 7x7)
-    player1 = game_agent.MinimaxPlayer(score_fn=improved_score)
-    player2 = GreedyPlayer(score_fn=improved_score)
-    game = Board(player2, player1)
+    playerA = game_agent.AlphaBetaPlayer(score_fn=open_move_score,search_depth=2)
+    playerB = GreedyPlayer(score_fn=open_move_score)
+    game = Board(playerA, playerB)
 
     # place player 1 on the board at row 2, column 3, then place player 2 on
     # the board at row 0, column 5; display the resulting board state.  Note
