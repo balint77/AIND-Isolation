@@ -5,6 +5,78 @@ and include the results in your report.
 import random
 
 
+min_log_level = 1000000
+
+def log(log_level, pause, game, *args):
+    if log_level < min_log_level:
+        return
+    if game is not None:
+        print(game.to_string())
+    print(*args)
+    if pause:
+        input("Press Enter to continue...")
+
+class Node:
+    def __init__(self, move, parent=None, score=None, cut=False):
+        self.move = move
+        self.score = score
+        self.cut = cut
+        self.parent = parent
+        self.children = []
+
+        if parent:
+            self.parent.children.append(self)
+
+    def __str__(self):
+        str = "-{} {}".format(self.move ,self.score)
+        if self.cut:
+            str += " CUT"
+        return str + "-"
+
+    def depth(self):
+        if len(self.children) == 0:
+            return 1
+        return max(child.depth() for child in self.children) + 1
+
+    def print_tree(self, log_level, indent="", last='updown'):
+
+        if log_level < min_log_level:
+            return
+
+        nb_children = lambda node: sum(nb_children(child) for child in node.children) + 1
+        size_branch = {child: nb_children(child) for child in self.children}
+
+        """ Creation of balanced lists for "up" branch and "down" branch. """
+        up = sorted(self.children, key=lambda node: nb_children(node))
+        down = []
+        while up and sum(size_branch[node] for node in down) < sum(size_branch[node] for node in up):
+            down.append(up.pop())
+
+        """ Printing of "up" branch. """
+        for child in up:
+            next_last = 'up' if up.index(child) is 0 else ''
+            next_indent = '{0}{1}{2}'.format(indent, ' ' if 'up' in last else ':', " " * len(self.__str__()))
+            child.print_tree(indent=next_indent, last=next_last, log_level=log_level)
+
+        """ Printing of current node. """
+        if last == 'up': start_shape = '/'
+        elif last == 'down': start_shape = '\\'
+        elif last == 'updown': start_shape = ' '
+        else: start_shape = ':'
+
+        if up: end_shape = ':'
+        elif down: end_shape = '\\'
+        else: end_shape = ''
+
+        print('{0}{1}{2}{3}'.format(indent, start_shape, self, end_shape))
+
+        """ Printing of "down" branch. """
+        for child in down:
+            next_last = 'down' if down.index(child) is len(down) - 1 else ''
+            next_indent = '{0}{1}{2}'.format(indent, ' ' if 'down' in last else ':', " " * len(self.__str__()))
+            child.print_tree(indent=next_indent, last=next_last, log_level=log_level)
+
+
 class SearchTimeout(Exception):
     """Subclass base exception for code clarity. """
     pass
@@ -34,8 +106,19 @@ def custom_score(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    # TODO: finish this function!
-    raise NotImplementedError
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    own_moves = len(game.get_legal_moves(player))
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+    score = float(own_moves - opp_moves) * 100
+    w, h = game.width / 2., game.height / 2.
+    y, x = game.get_player_location(player)
+    score = score + 99 - min(float((h - y) ** 2 + (w - x) ** 2),99)
+    return score
 
 
 def custom_score_2(game, player):
@@ -60,9 +143,19 @@ def custom_score_2(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    # TODO: finish this function!
-    raise NotImplementedError
+    if game.is_loser(player):
+        return float("-inf")
 
+    if game.is_winner(player):
+        return float("inf")
+
+    own_moves = len(game.get_legal_moves(player))
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+    score = float(own_moves - opp_moves) * 100
+    w, h = game.width / 2., game.height / 2.
+    y, x = game.get_player_location(player)
+    score = score + min(float((h - y) ** 2 + (w - x) ** 2), 99)
+    return score
 
 def custom_score_3(game, player):
     """Calculate the heuristic value of a game state from the point of view
@@ -86,9 +179,55 @@ def custom_score_3(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    # TODO: finish this function!
-    raise NotImplementedError
+    if game.is_loser(player):
+        return float("-inf")
 
+    if game.is_winner(player):
+        return float("inf")
+
+    own_moves = len(game.get_legal_moves(player))
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+    score = float(own_moves - opp_moves) * 100
+    y, x = game.get_player_location(player)
+    y2, x2 = game.get_player_location(game.get_opponent(player))
+    score = score + min(float((y2 - y) ** 2 + (x2 - x) ** 2), 99)
+    return score
+
+def custom_score_4(game, player):
+    """Calculate the heuristic value of a game state from the point of view
+    of the given player.
+
+    Note: this function should be called from within a Player instance as
+    `self.score()` -- you should not need to call this function directly.
+
+    Parameters
+    ----------
+    game : `isolation.Board`
+        An instance of `isolation.Board` encoding the current state of the
+        game (e.g., player locations and blocked cells).
+
+    player : object
+        A player instance in the current game (i.e., an object corresponding to
+        one of the player objects `game.__player_1__` or `game.__player_2__`.)
+
+    Returns
+    -------
+    float
+        The heuristic value of the current game state to the specified player.
+    """
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    own_moves = len(game.get_legal_moves(player))
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+    score = float(own_moves - opp_moves) * 100
+    y, x = game.get_player_location(player)
+    y2, x2 = game.get_player_location(game.get_opponent(player))
+    score = score + 99 - min(float((y2 - y) ** 2 + (x2 - x) ** 2), 99)
+    return score
 
 class IsolationPlayer:
     """Base class for minimax and alphabeta agents -- this class is never
@@ -112,23 +251,11 @@ class IsolationPlayer:
         positive value large enough to allow the function to return before the
         timer expires.
     """
-    def __init__(self, search_depth=3, score_fn=custom_score, timeout=10.):
+    def __init__(self, search_depth=5, score_fn=custom_score, timeout=30.):
         self.search_depth = search_depth
         self.score = score_fn
         self.time_left = None
         self.TIMER_THRESHOLD = timeout
-
-min_log_level = 10000
-
-def log(log_level, pause, game, *args):
-    if log_level < min_log_level:
-        return
-    if game is not None:
-        print(game.to_string())
-    print(*args)
-    if pause:
-        input("Press Enter to continue...")
-
 
 class MinimaxPlayer(IsolationPlayer):
     """Game-playing agent that chooses a move using depth-limited minimax
@@ -237,7 +364,7 @@ class MinimaxPlayer(IsolationPlayer):
             except SearchTimeout:
                 log(500, False, game, "X timed out")
                 break
-            if score > best_score:
+            if score >= best_score:
                 best_score = score
                 best_move = move
                 tree_root.score = best_score
@@ -279,76 +406,27 @@ class MinimaxPlayer(IsolationPlayer):
             except SearchTimeout:
                 log(500, False, game, "timed out")
                 return best_score
-            if max_level and score > best_score:
+            if max_level and score >= best_score:
                 best_score = score
                 best_move = move
                 log(5, False, None, "new max",best_move, best_score)
-            if not max_level and score < best_score:
+            if not max_level and score <= best_score:
                 best_score = score
                 best_move = move
                 log(5, False, None, "new min", best_move, best_score)
         return best_score
 
-class Node:
-    def __init__(self, move, parent=None, score=None, cut=False):
-        self.move = move
-        self.score = score
-        self.cut = cut
-        self.parent = parent
-        self.children = []
-
-        if parent:
-            self.parent.children.append(self)
-
-    def __str__(self):
-        str = "-{} {}".format(self.move ,self.score)
-        if self.cut:
-            str += " CUT"
-        return str + "-"
-
-    def print_tree(self, log_level, indent="", last='updown'):
-
-        if log_level < min_log_level:
-            return
-
-        nb_children = lambda node: sum(nb_children(child) for child in node.children) + 1
-        size_branch = {child: nb_children(child) for child in self.children}
-
-        """ Creation of balanced lists for "up" branch and "down" branch. """
-        up = sorted(self.children, key=lambda node: nb_children(node))
-        down = []
-        while up and sum(size_branch[node] for node in down) < sum(size_branch[node] for node in up):
-            down.append(up.pop())
-
-        """ Printing of "up" branch. """
-        for child in up:
-            next_last = 'up' if up.index(child) is 0 else ''
-            next_indent = '{0}{1}{2}'.format(indent, ' ' if 'up' in last else ':', " " * len(self.__str__()))
-            child.print_tree(indent=next_indent, last=next_last)
-
-        """ Printing of current node. """
-        if last == 'up': start_shape = '/'
-        elif last == 'down': start_shape = '\\'
-        elif last == 'updown': start_shape = ' '
-        else: start_shape = ':'
-
-        if up: end_shape = ':'
-        elif down: end_shape = '\\'
-        else: end_shape = ''
-
-        print('{0}{1}{2}{3}'.format(indent, start_shape, self, end_shape))
-
-        """ Printing of "down" branch. """
-        for child in down:
-            next_last = 'down' if down.index(child) is len(down) - 1 else ''
-            next_indent = '{0}{1}{2}'.format(indent, ' ' if 'down' in last else ':', " " * len(self.__str__()))
-            child.print_tree(indent=next_indent, last=next_last)
 
 class AlphaBetaPlayer(IsolationPlayer):
     """Game-playing agent that chooses a move using iterative deepening minimax
     search with alpha-beta pruning. You must finish and test this player to
     make sure it returns a good move before the search time limit expires.
     """
+    last_tree = None
+
+    def printLastDecisionTree(self):
+        if self.last_tree is not None:
+            self.last_tree.print_tree(100000)
 
     def get_move(self, game, time_left):
         """Search for the best move from the available legal moves and return a
@@ -383,16 +461,22 @@ class AlphaBetaPlayer(IsolationPlayer):
         self.time_left = time_left
         best_move = (-1,-1)
         try:
-            search_depth = 0
+            depth = 0
             max_depth = len(game.get_blank_spaces())
-            log(1000, False, None, "max depth", max_depth)
-            while search_depth < max_depth :
-                search_depth += 1
-                best_move = self.alphabeta(game, search_depth)
-            log(1000, False, game, "bottomed", search_depth, best_move)
+            log(1000, False, game, "max depth", max_depth)
+            while depth < max_depth :
+                depth += 1
+                best_move = self.alphabeta(game, depth)
+            log(1000, False, None, "bottomed", depth, best_move)
         except SearchTimeout:
-            log(1000, False, game, "timed out at depth", search_depth, best_move)
+            #log(1000, False, None, "timed out at depth", depth, best_move)
             pass
+        """if last_tree is not None:
+            log(1000, False, None, last_tree, last_tree.depth())
+            if last_tree.score == float("-inf"):
+                last_tree.print_tree(1000)
+        if not game.move_is_legal(best_move):
+            self.last_tree.print_tree(100000)"""
         return best_move
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
@@ -448,27 +532,24 @@ class AlphaBetaPlayer(IsolationPlayer):
         legal_moves = game.get_legal_moves()
         for move in legal_moves:
             log(10, False, game, "X trying", move)
-            try:
-                node = Node(move, tree_root)
-                score = self.alphabeta_traverse(game.forecast_move(move), self.search_depth - 1, alpha, beta, parent_node=node)
-                node.score = score
-                log(10, False, None, move, "X total score", score)
-                if score > best_score:
-                    best_score = score
-                    best_move = move
-                    tree_root.score = best_score
-                    log(10, False, None, "X new max", best_move, best_score)
-                    if best_score >= beta:
-                        node.cut = True
-                        break
-                    alpha = max(alpha, best_score)
-            except SearchTimeout:
-                log(500, False, game, "X timed out")
-                break
-        tree_root.print_tree(100)
+            node = Node(move, tree_root)
+            score = self.alphabeta_traverse(game.forecast_move(move), depth - 1, alpha, beta, parent_node=node)
+            node.score = score
+            log(10, False, None, move, "X total score", score)
+            if score >= best_score:
+                best_score = score
+                best_move = move
+                log(10, False, None, "X new max", best_move, best_score)
+                if best_score >= beta:
+                    node.cut = True
+                    break
+                alpha = max(alpha, best_score)
+        tree_root.move = best_move
+        tree_root.score = best_score
+        self.last_tree = tree_root
         if best_move not in legal_moves:
             log(100, False, None, "X wtf", best_move, best_score, legal_moves)
-        log(100, False, game, "X chosen", best_move, best_score)
+        log(1000, False, None, "X chosen", best_move, best_score,"at depth",depth)
         return best_move
 
     def alphabeta_traverse(self, game, depth, alpha=float("-inf"), beta=float("inf"), parent_node=None):
@@ -490,26 +571,22 @@ class AlphaBetaPlayer(IsolationPlayer):
         best_move = (-1, -1)
         best_score = float("-inf") if max_level else float("inf")
         legal_moves = game.get_legal_moves()
-        try:
-            for move in legal_moves:
-                node = Node(move, parent_node)
-                score = self.alphabeta_traverse(game.forecast_move(move), depth - 1, alpha, beta, node)
-                node.score = score
-                if max_level and score > best_score:
-                    best_score = score
-                    best_move = move
-                    if best_score >= beta:
-                        node.cut = True
-                        break
-                    alpha = max(alpha, best_score)
-                if not max_level and score < best_score:
-                    best_score = score
-                    best_move = move
-                    if best_score <= alpha:
-                        node.cut = True
-                        break
-                    beta = min(beta, best_score)
-        except SearchTimeout:
-            log(500, False, game, "timed out")
-            pass
+        for move in legal_moves:
+            node = Node(move, parent_node)
+            score = self.alphabeta_traverse(game.forecast_move(move), depth - 1, alpha, beta, node)
+            node.score = score
+            if max_level and score >= best_score:
+                best_score = score
+                best_move = move
+                if best_score >= beta:
+                    node.cut = True
+                    break
+                alpha = max(alpha, best_score)
+            if not max_level and score <= best_score:
+                best_score = score
+                best_move = move
+                if best_score <= alpha:
+                    node.cut = True
+                    break
+                beta = min(beta, best_score)
         return best_score

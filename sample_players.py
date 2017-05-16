@@ -257,8 +257,8 @@ if __name__ == "__main__":
     from isolation import Board
 
     # create an isolation board (by default 7x7)
-    playerA = game_agent.AlphaBetaPlayer(score_fn=open_move_score,search_depth=2)
-    playerB = GreedyPlayer(score_fn=open_move_score)
+    playerA = game_agent.AlphaBetaPlayer(score_fn=improved_score,timeout=100.)
+    playerB = GreedyPlayer(score_fn=improved_score)
     game = Board(playerA, playerB)
 
     # place player 1 on the board at row 2, column 3, then place player 2 on
