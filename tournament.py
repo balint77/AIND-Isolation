@@ -137,29 +137,30 @@ def main():
     # Define two agents to compare -- these agents will play from the same
     # starting position against the same adversaries in the tournament
     test_agents = [
-        Agent(AlphaBetaPlayer(score_fn=improved_score), "MM_Improved"),
-        Agent(AlphaBetaPlayer(score_fn=custom_score), "MM_Center"),
-        Agent(AlphaBetaPlayer(score_fn=custom_score_2), "MM_Edge"),
-        Agent(AlphaBetaPlayer(score_fn=custom_score_3), "MM_Atack"),
-        Agent(AlphaBetaPlayer(score_fn=custom_score_4), "MM_Avoid")
+        Agent(MinimaxPlayer(score_fn=improved_score), "MM_Improved"),
+        Agent(MinimaxPlayer(score_fn=custom_score), "MM_Attack"),
+        Agent(MinimaxPlayer(score_fn=custom_score_2), "MM_Passive"),
+        Agent(MinimaxPlayer(score_fn=custom_score_3), "MM_Agressive"),
+        Agent(MinimaxPlayer(score_fn=custom_score_4), "MM_LessAgressive")
     ]
 
     # Define a collection of agents to compete against the test agents
     cpu_agents = [
         Agent(RandomPlayer(), "Random"),
-        Agent(AlphaBetaPlayer(score_fn=open_move_score), "MM_Open"),
-        Agent(AlphaBetaPlayer(score_fn=center_score), "MM_Center"),
-        Agent(AlphaBetaPlayer(score_fn=improved_score), "MM_Improved"),
+        Agent(MinimaxPlayer(score_fn=open_move_score), "MM_Open"),
+        Agent(MinimaxPlayer(score_fn=center_score), "MM_Center"),
+        Agent(MinimaxPlayer(score_fn=improved_score), "MM_Improved"),
         #Agent(AlphaBetaPlayer(score_fn=open_move_score), "AB_Open"),
         #Agent(AlphaBetaPlayer(score_fn=center_score), "AB_Center"),
         #Agent(AlphaBetaPlayer(score_fn=improved_score), "AB_Improved")
     ]
 
-    print(DESCRIPTION)
-    print("{:^74}".format("*************************"))
-    print("{:^74}".format("Playing Matches"))
-    print("{:^74}".format("*************************"))
-    play_matches(cpu_agents, test_agents, NUM_MATCHES)
+    for t in [1,2]:
+        print(DESCRIPTION)
+        print("{:^74}".format("*************************"))
+        print("{:^74}".format("Playing Matches"))
+        print("{:^74}".format("*************************"))
+        play_matches(cpu_agents, test_agents, NUM_MATCHES)
 
 
 if __name__ == "__main__":
