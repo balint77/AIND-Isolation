@@ -23,8 +23,8 @@ from sample_players import (RandomPlayer, open_move_score,
 from game_agent import (MinimaxPlayer, AlphaBetaPlayer, custom_score,
                         custom_score_2, custom_score_3, custom_score_4)
 
-NUM_MATCHES = 50  # number of matches against each opponent
-TIME_LIMIT = 150  # number of milliseconds before timeout
+NUM_MATCHES = 5  # number of matches against each opponent
+TIME_LIMIT = 100  # number of milliseconds before timeout
 
 DESCRIPTION = """
 This script evaluates the performance of the custom_score evaluation
@@ -48,26 +48,28 @@ def play_round(cpu_agent, test_agents, win_counts, num_matches):
     forfeit_count = 0
     for _ in range(num_matches):
 
-        games = sum([[Board(cpu_agent.player, agent.player),
-                      Board(agent.player, cpu_agent.player)]
-                    for agent in test_agents], [])
+        games = []
+
+        for agent in test_agents:
+            games.append((Board(cpu_agent.player, agent.player), agent, cpu_agent))
+            games.append((Board(agent.player, cpu_agent.player), agent, cpu_agent))
 
         # initialize all games with a random move and response
         for _ in range(2):
-            move = random.choice(games[0].get_legal_moves())
+            move = random.choice(games[0][0].get_legal_moves())
             for game in games:
-                game.apply_move(move)
+                game[0].apply_move(move)
 
         # play all games and tally the results
         for game in games:
-            winner, _, termination = game.play(time_limit=TIME_LIMIT)
+            winner, _, termination = game[0].play(time_limit=TIME_LIMIT)
+            print(game[1].name,game[2].name,1 if winner is game[1].player else -1)
             win_counts[winner] += 1
 
         if termination == "timeout":
             timeout_count += 1
         elif winner not in test_agents and termination == "forfeit":
-            loser = game.get_opponent(winner)
-            print("loser is",loser)
+            loser = game[0].get_opponent(winner)
             tree_print = getattr(loser, "printLastDecisionTree", None)
             if callable(tree_print):
                 tree_print(10000)
@@ -89,13 +91,14 @@ def play_matches(cpu_agents, test_agents, num_matches):
     total_forfeits = 0.
     total_matches = 2 * num_matches * len(cpu_agents)
 
-    print("\n{:^9}{:^13}{:^13}{:^13}{:^13}{:^13}{:^13}".format(
+    """print("\n{:^9}{:^13}{:^13}{:^13}{:^13}{:^13}{:^13}".format(
         "Match #", "Opponent", test_agents[0].name, test_agents[1].name,
         test_agents[2].name, test_agents[3].name, test_agents[4].name))
     print("{:^9}{:^13} {:^5}| {:^5} {:^5}| {:^5} {:^5}| {:^5} {:^5}| {:^5} {:^5}| {:^5}"
-          .format("", "", *(["Won", "Lost"] * 5)))
+          .format("", "", *(["Won", "Lost"] * 5)))"""
 
     for idx, agent in enumerate(cpu_agents):
+
         wins = {test_agents[0].player: 0,
                 test_agents[1].player: 0,
                 test_agents[2].player: 0,
@@ -103,7 +106,9 @@ def play_matches(cpu_agents, test_agents, num_matches):
                 test_agents[4].player: 0,
                 agent.player: 0}
 
-        print("{!s:^9}{:^13}".format(idx + 1, agent.name), end="", flush=True)
+        play_round(agent, test_agents, wins, num_matches)
+
+        """print("{!s:^9}{:^13}".format(idx + 1, agent.name), end="", flush=True)
 
         counts = play_round(agent, test_agents, wins, num_matches)
         total_timeouts += counts[0]
@@ -129,7 +134,7 @@ def play_matches(cpu_agents, test_agents, num_matches):
             total_timeouts))
     if total_forfeits:
         print(("\nYour ID search forfeited {} games while there were still " +
-               "legal moves available to play.\n").format(total_forfeits))
+               "legal moves available to play.\n").format(total_forfeits))"""
 
 
 def main():
@@ -137,19 +142,19 @@ def main():
     # Define two agents to compare -- these agents will play from the same
     # starting position against the same adversaries in the tournament
     test_agents = [
-        Agent(MinimaxPlayer(score_fn=improved_score), "MM_Improved"),
-        Agent(MinimaxPlayer(score_fn=custom_score), "MM_Attack"),
-        Agent(MinimaxPlayer(score_fn=custom_score_2), "MM_Passive"),
-        Agent(MinimaxPlayer(score_fn=custom_score_3), "MM_Agressive"),
-        Agent(MinimaxPlayer(score_fn=custom_score_4), "MM_LessAgressive")
+        Agent(AlphaBetaPlayer(score_fn=improved_score), "MM_Improved"),
+        Agent(AlphaBetaPlayer(score_fn=custom_score), "MM_Avoid"),
+        Agent(AlphaBetaPlayer(score_fn=custom_score_2), "MM_Middle"),
+        Agent(AlphaBetaPlayer(score_fn=custom_score_3), "MM_Attack"),
+        Agent(AlphaBetaPlayer(score_fn=custom_score_4), "MM_Edge")
     ]
 
     # Define a collection of agents to compete against the test agents
     cpu_agents = [
-        Agent(RandomPlayer(), "Random"),
-        Agent(MinimaxPlayer(score_fn=open_move_score), "MM_Open"),
-        Agent(MinimaxPlayer(score_fn=center_score), "MM_Center"),
-        Agent(MinimaxPlayer(score_fn=improved_score), "MM_Improved"),
+        Agent(AlphaBetaPlayer(score_fn=improved_score), "MM_Improved"),
+        #Agent(RandomPlayer(), "Random"),
+        #Agent(AlphaBetaPlayer(score_fn=open_move_score), "MM_Open"),
+        #Agent(AlphaBetaPlayer(score_fn=center_score), "MM_Center"),
         #Agent(AlphaBetaPlayer(score_fn=open_move_score), "AB_Open"),
         #Agent(AlphaBetaPlayer(score_fn=center_score), "AB_Center"),
         #Agent(AlphaBetaPlayer(score_fn=improved_score), "AB_Improved")

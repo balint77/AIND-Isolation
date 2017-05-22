@@ -4,10 +4,11 @@ and include the results in your report.
 """
 import random
 
-
-min_log_level = 1000000
+#no logs will be written out if their level is below this number
+min_log_level = 10000
 
 def log(log_level, pause, game, *args):
+    """"Helper function to log messages."""
     if log_level < min_log_level:
         return
     if game is not None:
@@ -17,6 +18,9 @@ def log(log_level, pause, game, *args):
         input("Press Enter to continue...")
 
 class Node:
+    """Helper class to visualize decision trees. Code is based on https://github.com/clemtoy/pptree. It keeps track of 
+    what is the move and the score of a node. The nodes form a tree as the recursive algorith explores game states.
+    If cut is True than alpha-beta pruning occurred under this node."""
     def __init__(self, move, parent=None, score=None, cut=False):
         self.move = move
         self.score = score
@@ -39,7 +43,7 @@ class Node:
         return max(child.depth() for child in self.children) + 1
 
     def print_tree(self, log_level, indent="", last='updown'):
-
+        """ Call this functions the print out the tree. It gets print only if the log_level is above the minimum defined."""
         if log_level < min_log_level:
             return
 
@@ -82,38 +86,8 @@ class SearchTimeout(Exception):
     pass
 
 
-def custom_score_5(game, player):
-    if game.is_loser(player):
-        return float("-inf")
-
-    if game.is_winner(player):
-        return float("inf")
-
-    own_moves = len(game.get_legal_moves(player))
-    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
-    score = float(own_moves - opp_moves) * 100
-    w, h = game.width / 2., game.height / 2.
-    y, x = game.get_player_location(player)
-    score = score + 99 - min(float((h - y) ** 2 + (w - x) ** 2),99)
-    return score
-
-
-def custom_score_7(game, player):
-    if game.is_loser(player):
-        return float("-inf")
-
-    if game.is_winner(player):
-        return float("inf")
-
-    own_moves = len(game.get_legal_moves(player))
-    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
-    score = float(own_moves - opp_moves) * 100
-    w, h = game.width / 2., game.height / 2.
-    y, x = game.get_player_location(player)
-    score = score + min(float((h - y) ** 2 + (w - x) ** 2), 99)
-    return score
-
 def custom_score(game, player):
+    """ Avoid: favours getting close to the opponent"""
     if game.is_loser(player):
         return float("-inf")
 
@@ -122,40 +96,32 @@ def custom_score(game, player):
 
     own_moves = len(game.get_legal_moves(player))
     opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
-    score = float(own_moves - opp_moves) * 100
+    score = float(own_moves - opp_moves) * 1000
+    #score so far equals to the strategy Improved, now let's fine-tune it by distance between the players
     y, x = game.get_player_location(player)
     y2, x2 = game.get_player_location(game.get_opponent(player))
-    score = score + min(float((y2 - y) ** 2 + (x2 - x) ** 2), 99)
-    return score
-
-def custom_score_6(game, player):
-    if game.is_loser(player):
-        return float("-inf")
-
-    if game.is_winner(player):
-        return float("inf")
-
-    own_moves = len(game.get_legal_moves(player))
-    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
-    score = float(own_moves - opp_moves) * 100
-    y, x = game.get_player_location(player)
-    y2, x2 = game.get_player_location(game.get_opponent(player))
-    score = score + 99 - min(float((y2 - y) ** 2 + (x2 - x) ** 2), 99)
+    score = score + min(float((y2 - y) ** 2 + (x2 - x) ** 2), 999)
     return score
 
 def custom_score_2(game, player):
+    """ Attack: favours getting further away from the opponent"""
     if game.is_loser(player):
         return float("-inf")
 
     if game.is_winner(player):
         return float("inf")
 
-    own_moves = 2 * len(game.get_legal_moves(player))
+    own_moves = len(game.get_legal_moves(player))
     opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
-    score = float(own_moves - opp_moves) * 100
+    score = float(own_moves - opp_moves) * 1000
+    #score so far equals to the strategy Improved, now let's fine-tune it by negative distance between the players
+    y, x = game.get_player_location(player)
+    y2, x2 = game.get_player_location(game.get_opponent(player))
+    score = score + 999 - min(float((y2 - y) ** 2 + (x2 - x) ** 2), 999)
     return score
 
 def custom_score_3(game, player):
+    """ Middle: favours getting cose to the center of the board"""
     if game.is_loser(player):
         return float("-inf")
 
@@ -163,11 +129,17 @@ def custom_score_3(game, player):
         return float("inf")
 
     own_moves = len(game.get_legal_moves(player))
-    opp_moves = 2 * len(game.get_legal_moves(game.get_opponent(player)))
-    score = float(own_moves - opp_moves) * 100
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+    score = float(own_moves - opp_moves) * 1000
+    #score so far equals to the strategy Improved, now let's fine-tune it by negative distance from the center of the board
+    w, h = game.width / 2., game.height / 2.
+    y, x = game.get_player_location(player)
+    score = score + 999 - min(float((h - y) ** 2 + (w - x) ** 2),999)
     return score
 
+
 def custom_score_4(game, player):
+    """ Edge: favours getting away from the center of the board"""
     if game.is_loser(player):
         return float("-inf")
 
@@ -175,8 +147,12 @@ def custom_score_4(game, player):
         return float("inf")
 
     own_moves = len(game.get_legal_moves(player))
-    opp_moves = 1.5 * len(game.get_legal_moves(game.get_opponent(player)))
-    score = float(own_moves - opp_moves) * 100
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+    score = float(own_moves - opp_moves) * 1000
+    #score so far equals to the strategy Improved, now let's fine-tune it by distance from the center of the board
+    w, h = game.width / 2., game.height / 2.
+    y, x = game.get_player_location(player)
+    score = score + min(float((h - y) ** 2 + (w - x) ** 2), 999)
     return score
 
 class IsolationPlayer:
@@ -201,7 +177,7 @@ class IsolationPlayer:
         positive value large enough to allow the function to return before the
         timer expires.
     """
-    def __init__(self, search_depth=5, score_fn=custom_score, timeout=30.):
+    def __init__(self, search_depth=3, score_fn=custom_score, timeout=30.):
         self.search_depth = search_depth
         self.score = score_fn
         self.time_left = None
@@ -321,49 +297,46 @@ class MinimaxPlayer(IsolationPlayer):
                 log(10, False, game, "X new max", best_move, best_score)
         tree_root.print_tree(100)
         log(100, False, game, "X chosen", best_move, best_score)
-        if best_move not in legal_moves:
-            log(100, False, None, "X wtf", best_move, best_score, legal_moves)
         return best_move
 
     def minimax_traverse(self, game, depth, parent_node):
+        """This recursive function returns the score of a game state based on further moves and a scoring algo.
+        parent_node is used to store the decision in a tree for debugging purposes."""
         log(5, False, game, "evaluate", depth, game.active_player)
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
         if game.is_loser(self):
-            log(10, False, game, "we would lose")
             return float("-inf")
 
         if game.is_winner(self):
-            log(10, False, game, "we would win")
             return float("inf")
 
         if depth == 0:
-            log(5, False, None, "depth limit reached",self.score(game, self))
+            #max depth reached, so we dont go deeper but use the scoring algo to vlaue the game state
             return self.score(game, self)
 
+        #max_level is true if on this level we try to maximize value (our player's move round)
         max_level = True if self is game.active_player else False
         best_move = (-1, -1)
         best_score = float("-inf") if max_level else float("inf")
         legal_moves = game.get_legal_moves()
         for move in legal_moves:
             try:
-                log(5, False, None, "traversing", move)
                 node = Node(move, parent_node)
+                #let's get the score if each further move
                 score = self.minimax_traverse(game.forecast_move(move), depth - 1, node)
                 node.score = score
-                log(5, False, None, move, "scores", score)
             except SearchTimeout:
-                log(500, False, game, "timed out")
                 return best_score
             if max_level and score >= best_score:
+                #on maximizer level we search for best score
                 best_score = score
                 best_move = move
-                log(5, False, None, "new max",best_move, best_score)
             if not max_level and score <= best_score:
+                #on minimize level we search for lowest score
                 best_score = score
                 best_move = move
-                log(5, False, None, "new min", best_move, best_score)
         return best_score
 
 
@@ -372,11 +345,6 @@ class AlphaBetaPlayer(IsolationPlayer):
     search with alpha-beta pruning. You must finish and test this player to
     make sure it returns a good move before the search time limit expires.
     """
-    last_tree = None
-
-    def printLastDecisionTree(self):
-        if self.last_tree is not None:
-            self.last_tree.print_tree(100000)
 
     def get_move(self, game, time_left):
         """Search for the best move from the available legal moves and return a
@@ -416,17 +384,12 @@ class AlphaBetaPlayer(IsolationPlayer):
             log(1000, False, game, "max depth", max_depth)
             while depth < max_depth :
                 depth += 1
+                #we run a new AB with increasing level. so whener timer hits we have the best possible score.
                 best_move = self.alphabeta(game, depth)
-            log(1000, False, None, "bottomed", depth, best_move)
+            log(1000, False, None, "bottomed", depth, len(game.get_blank_spaces()))
         except SearchTimeout:
-            #log(1000, False, None, "timed out at depth", depth, best_move)
+            log(1000, False, None, "timed out at depth", depth, best_move)
             pass
-        """if last_tree is not None:
-            log(1000, False, None, last_tree, last_tree.depth())
-            if last_tree.score == float("-inf"):
-                last_tree.print_tree(1000)
-        if not game.move_is_legal(best_move):
-            self.last_tree.print_tree(100000)"""
         return best_move
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
@@ -483,10 +446,12 @@ class AlphaBetaPlayer(IsolationPlayer):
         for move in legal_moves:
             log(10, False, game, "X trying", move)
             node = Node(move, tree_root)
+            #get te score of each child node
             score = self.alphabeta_traverse(game.forecast_move(move), depth - 1, alpha, beta, parent_node=node)
             node.score = score
             log(10, False, None, move, "X total score", score)
             if score >= best_score:
+                #store the best child move score
                 best_score = score
                 best_move = move
                 log(10, False, None, "X new max", best_move, best_score)
@@ -496,14 +461,13 @@ class AlphaBetaPlayer(IsolationPlayer):
                 alpha = max(alpha, best_score)
         tree_root.move = best_move
         tree_root.score = best_score
-        self.last_tree = tree_root
-        if best_move not in legal_moves:
-            log(100, False, None, "X wtf", best_move, best_score, legal_moves)
+        tree_root.print_tree(100)
         log(1000, False, None, "X chosen", best_move, best_score,"at depth",depth)
         return best_move
 
     def alphabeta_traverse(self, game, depth, alpha=float("-inf"), beta=float("inf"), parent_node=None):
-        """Similar to alphabeta, but log decision moves and scores into a tree linked on parent_node"""
+        """Recursive part of alphabeta that returns the score of the game state.
+        It also stores the decision tree in parent_node"""
 
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
@@ -515,28 +479,37 @@ class AlphaBetaPlayer(IsolationPlayer):
             return float("inf")
 
         if depth == 0:
+            #max depth reached so we go no deeper, but use the scoring function the value the game state
             return self.score(game, self)
 
+        #max_level is true if on this level we try to maximize value (our player's move round), false if we minimize
         max_level = True if self is game.active_player else False
         best_move = (-1, -1)
         best_score = float("-inf") if max_level else float("inf")
         legal_moves = game.get_legal_moves()
         for move in legal_moves:
             node = Node(move, parent_node)
+            #let's get the score of next steps
             score = self.alphabeta_traverse(game.forecast_move(move), depth - 1, alpha, beta, node)
             node.score = score
             if max_level and score >= best_score:
+                #we store the max score on max level
                 best_score = score
                 best_move = move
                 if best_score >= beta:
+                    #this is a cut opportunity no need to check more children
                     node.cut = True
                     break
+                #update lower limit on aplha-beta
                 alpha = max(alpha, best_score)
             if not max_level and score <= best_score:
+                #we store the min score on min level
                 best_score = score
                 best_move = move
                 if best_score <= alpha:
+                    #this is a cut opportunity no need to check more children
                     node.cut = True
                     break
+                #update upper limit on aplha-beta
                 beta = min(beta, best_score)
         return best_score
